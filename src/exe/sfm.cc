@@ -659,6 +659,28 @@ std::vector<CameraRig> ReadCameraRigConfig(const std::string& rig_config_path,
   return camera_rigs;
 }
 
+void WriteCameraRigConfig(const std::string& rig_file, const CameraRig& rig) {
+
+  boost::property_tree::ptree tree;
+
+  auto cids = rig.GetCameraIds();
+
+  for( size_t i=0; i<rig.NumCameras(); ++i ) {
+    const auto& id   = cids[i];
+    const auto& rvec = rig.RelativeQvec(id);
+    const auto& tvec = rig.RelativeTvec(id);
+    const auto& img_prefix = rig.ImagePrefix(id);
+
+    tree.put("ref_camera_id", rig.RefCameraId() );
+    tree.put("cameras.camera_id",id);
+    tree.put("cameras.camera_id",id);
+
+
+  }
+
+}
+
+
 }  // namespace
 
 int RunRigBundleAdjuster(int argc, char** argv) {
@@ -697,6 +719,9 @@ int RunRigBundleAdjuster(int argc, char** argv) {
     std::cout << StringPrintf("Snapshots: %d", camera_rig.NumSnapshots())
               << std::endl;
 
+    // print relative poses between cameras
+    std::cout << "Initial relative poses\n";
+    camera_rig.PrintRelativePoses();
     // Add all registered images to the bundle adjustment configuration.
     for (const auto image_id : reconstruction.RegImageIds()) {
       config.AddImage(image_id);
@@ -711,6 +736,27 @@ int RunRigBundleAdjuster(int argc, char** argv) {
   CHECK(bundle_adjuster.Solve(&reconstruction, &camera_rigs));
 
   reconstruction.Write(output_path);
+
+  std::cout << "After refinement relative poses\n";
+  for (size_t i = 0; i < camera_rigs.size(); ++i) {
+    const auto& camera_rig = camera_rigs[i];
+    PrintHeading2(StringPrintf("Camera Rig %d", i + 1));
+    camera_rig.PrintRelativePoses();
+  }
+
+  bool reestimate_relative = false;
+  if( reestimate_relative ) {
+    for (size_t i = 0; i < camera_rigs.size(); ++i) {
+      const auto& camera_rig = camera_rigs[i];
+      PrintHeading2(StringPrintf("Camera Rig %d", i + 1));
+      PrintHeading2("Re - Estimating relative rig poses");
+      if (!camera_rig.ComputeRelativePoses(reconstruction)) {
+        std::cout << "Re-estimation failed - smt wrong with the rig BA"
+                  << std::endl;
+      }
+      camera_rig.PrintRelativePoses();
+    }
+  }
 
   return EXIT_SUCCESS;
 }

@@ -111,6 +111,9 @@ class CameraRig {
                            Eigen::Vector4d* abs_qvec,
                            Eigen::Vector3d* abs_tvec) const;
 
+  void CameraRig::PrintRelativePoses() const;
+  const std::string& ImagePrefix(const camera_t camera_id) const;
+
  private:
   struct RigCamera {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -121,6 +124,7 @@ class CameraRig {
   camera_t ref_camera_id_ = kInvalidCameraId;
   EIGEN_STL_UMAP(camera_t, RigCamera) rig_cameras_;
   std::vector<std::vector<image_t>> snapshots_;
+  std::map<camera_t, std::string> image_prefixes_;
 };
 
 }  // namespace colmap

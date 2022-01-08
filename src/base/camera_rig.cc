@@ -67,13 +67,16 @@ const std::vector<std::vector<image_t>>& CameraRig::Snapshots() const {
 
 void CameraRig::AddCamera(const camera_t camera_id,
                           const Eigen::Vector4d& rel_qvec,
-                          const Eigen::Vector3d& rel_tvec) {
+                          const Eigen::Vector3d& rel_tvec,
+                          const std::string& image_prefix
+                          ) {
   CHECK(!HasCamera(camera_id));
   CHECK_EQ(NumSnapshots(), 0);
   RigCamera rig_camera;
   rig_camera.rel_qvec = rel_qvec;
   rig_camera.rel_tvec = rel_tvec;
   rig_cameras_.emplace(camera_id, rig_camera);
+  image_prefixes[camera_id] = image_prefix;
 }
 
 void CameraRig::AddSnapshot(const std::vector<image_t>& image_ids) {
@@ -123,6 +126,10 @@ Eigen::Vector3d& CameraRig::RelativeTvec(const camera_t camera_id) {
 
 const Eigen::Vector3d& CameraRig::RelativeTvec(const camera_t camera_id) const {
   return rig_cameras_.at(camera_id).rel_tvec;
+}
+
+const std::string& CameraRig::ImagePrefix(const camera_t camera_id) const {
+  return image_prefixes_.at(camera_id);
 }
 
 double CameraRig::ComputeScale(const Reconstruction& reconstruction) const {
@@ -255,6 +262,16 @@ void CameraRig::ComputeAbsolutePose(const size_t snapshot_idx,
   const std::vector<double> abs_qvec_weights(snapshot.size(), 1);
   *abs_qvec = AverageQuaternions(abs_qvecs, abs_qvec_weights);
   *abs_tvec /= snapshot.size();
+}
+
+void CameraRig::PrintRelativePoses() const {
+   auto cids = GetCameraIds();
+    for (size_t k=0; k<cids.size(); ++k ) {
+      const auto& cid  = cids[k];
+      const auto& rvec = RelativeQvec(cid);
+      const auto& tvec = RelativeQvec(cid);
+      std::cout << cid << " " << image_prefixes[cid] << " " << rvec << " " << tvec << "\n";
+    }
 }
 
 }  // namespace colmap
