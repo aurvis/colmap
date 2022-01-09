@@ -661,23 +661,33 @@ std::vector<CameraRig> ReadCameraRigConfig(const std::string& rig_config_path,
 
 void WriteCameraRigConfig(const std::string& rig_file, const CameraRig& rig) {
 
-  boost::property_tree::ptree tree;
+  boost::property_tree::ptree tree, arr;
+  tree.put("ref_camera_id", rig.RefCameraId() );
 
   auto cids = rig.GetCameraIds();
-
   for( size_t i=0; i<rig.NumCameras(); ++i ) {
     const auto& id   = cids[i];
     const auto& rvec = rig.RelativeQvec(id);
     const auto& tvec = rig.RelativeTvec(id);
     const auto& img_prefix = rig.ImagePrefix(id);
 
-    tree.put("ref_camera_id", rig.RefCameraId() );
-    tree.put("cameras.camera_id",id);
-    tree.put("cameras.camera_id",id);
+    boost::property_tree::ptree cam_elem;
+    cam_elem.put("camera_id", id);
+    cam_elem.put("image_prefix", img_prefix.c_str());
 
+    std::stringstream rs;
+    rs << "[ " << rvec[0] <<", " << rvec[1] <<", " << rvec[2] <<", " << rvec[3] <<"]";
 
+    std::stringstream ts;
+    ts << "[ " << tvec[0] <<", " << tvec[1] <<", " << tvec[2] <<"]";
+
+    cam_elem.put("rel_tvec", ts.str() );
+    cam_elem.put("rel_rvec", rs.str() );
+    arr.push_back( std::make_pair("", cam_elem) );
   }
+  tree.put_child("cameras", arr);
 
+  pt::write_json(rig_file, tree);
 }
 
 
@@ -757,6 +767,9 @@ int RunRigBundleAdjuster(int argc, char** argv) {
       camera_rig.PrintRelativePoses();
     }
   }
+
+  WriteCameraRigConfig("/tmp/out_camera.json", camera_rig );
+
 
   return EXIT_SUCCESS;
 }
